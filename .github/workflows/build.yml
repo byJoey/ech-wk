@@ -99,8 +99,20 @@ jobs:
             enable_gui: false
             cgo_enabled: "0"
 
+          # ✅ Android arm64（主流 Android 设备）
+          - os: ubuntu-latest
+            goos: android
+            goarch: arm64
+            exe_ext: ""
+            archive_format: tar.gz
+            archive_ext: .tar.gz
+            target: android
+            artifact_suffix: "-android"
+            enable_gui: false
+            cgo_enabled: "0"
+
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -108,7 +120,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.23.x'
           cache: false
 
       - name: Initialize Go module
@@ -176,10 +188,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p release
-          
+
           # Go 可执行文件
           cp ech-workers${{ matrix.exe_ext }} release/
-          
+
           # GUI（仅桌面版）
           if [ "${{ matrix.enable_gui }}" = "true" ]; then
             if [ "${{ matrix.goos }}" == "windows" ]; then
@@ -195,7 +207,7 @@ jobs:
               fi
             fi
           fi
-          
+
           # README
           {
             echo "ECH Workers Client"
@@ -214,13 +226,17 @@ jobs:
                 echo "  Use ech-workers from command line instead"
               fi
             else
-              echo "- GUI client not included for this build (CLI only, suitable for routers / servers)"
+              echo "- GUI client not included for this build (CLI only, suitable for routers / servers / Android)"
             fi
             echo ""
             echo "Usage:"
             if [ "${{ matrix.goos }}" == "windows" ]; then
               echo "1. Double-click ECHWorkersGUI.exe to launch the GUI (if present)"
               echo "2. Or run ech-workers.exe from command line"
+            elif [ "${{ matrix.goos }}" == "android" ]; then
+              echo "1. Copy ech-workers to Android (Termux / adb shell)"
+              echo "2. chmod +x ech-workers"
+              echo "3. Run ./ech-workers -h to see options"
             else
               echo "1. Run ./ech-workers from command line"
               if [ "${{ matrix.enable_gui }}" = "true" ]; then
@@ -233,6 +249,10 @@ jobs:
               echo "- Linux soft router / NAS (OpenWrt / iStoreOS / x86_64 or ARM64)"
               echo "- Architecture: ${{ matrix.goarch }}"
               echo "- Recommended: run from SSH / shell"
+            elif [ "${{ matrix.goos }}" == "android" ]; then
+              echo "- Android 7+ recommended (arm64)"
+              echo "- Architecture: ${{ matrix.goarch }}"
+              echo "- Recommended: run in Termux or adb shell"
             else
               if [ "${{ matrix.goos }}" == "windows" ]; then
                 echo "- Windows: Windows 10+"
@@ -261,8 +281,8 @@ jobs:
           zip -r ../ECHWorkers-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.artifact_suffix }}${{ matrix.archive_ext }} .
         shell: bash
 
-      - name: Create archive (Linux)
-        if: startsWith(github.ref, 'refs/tags/') && matrix.goos == 'linux'
+      - name: Create archive (Linux/Android)
+        if: startsWith(github.ref, 'refs/tags/') && (matrix.goos == 'linux' || matrix.goos == 'android')
         run: |
           cd release
           tar -czf ../ECHWorkers-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.artifact_suffix }}${{ matrix.archive_ext }} .
@@ -280,7 +300,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
