@@ -722,6 +722,27 @@ ECH 是 TLS 1.3 的扩展功能，用于加密 TLS 握手中的 SNI（服务器�
 - **Telegram 频道**: [@CF_NAT](https://t.me/CF_NAT)
 - **中国 IP 列表**: [mayaxcn/china-ip-list](https://github.com/mayaxcn/china-ip-list)
 
+## 🧪 可选：VLESS/XHTTP 入口
+
+`_worker.js` 现在额外提供一个可选的 VLESS over XHTTP（`stream-one`）入口，原有
+WebSocket + SOCKS5/HTTP CONNECT 隧道完全不变。未配置 UUID 时该入口关闭，行为与旧版一致。
+
+- 服务端配置：环境变量 `UUID`（带/不带连字符均可），可选 `XHTTP_PATH` 覆盖路径。
+  默认接受 `/<UUID>`、`/<UUID-去掉连字符>` 和 `/<UUID 前 8 位>`，并允许 Xray 追加
+  `/<session-id>`。
+- 客户端（Xray）关键参数：`mode: "stream-one"`、`xPaddingObfsMode: true`、
+  `xPaddingBytes: "32-64"`、`xPaddingKey: "request_id"`、`xPaddingHeader: "X-Request-Id"`、
+  `xPaddingPlacement: "header"`、`xPaddingMethod: "tokenish"`。
+- 服务端按 HPACK Huffman 长度校验 `X-Request-Id`，缺失或非法（包括 `repeat-x`）返回 400。
+  响应会回填一个新的 tokenish `X-Request-Id`。
+- **Pages/workers.dev 注意**：这些 `*.pages.dev` / `*.workers.dev` 主机名会在边缘对精确的
+  `Content-Type: application/grpc` 返回 403。客户端请同时设置
+  `noGRPCHeader: true` 与 `headers: {"content-type": "application/grpc; charset=utf-8"}`；
+  后者仍会被边缘按 gRPC 做全双工转发。绑定自定义域名后可直接使用标准 `application/grpc`。
+
+已验证：Pages 部署 + Xray 26.9.30 连续 3 次访问
+`https://www.gstatic.com/generate_204` 返回 204；缺少 padding 或改为 `repeat-x` 均失败（400）。
+
 ## 📄 许可证
 
 本项目基于 [CF_NAT](https://t.me/CF_NAT) 的原始代码开发。
